@@ -166,6 +166,7 @@ def get_vit(model_name='B_16_imagenet1k', num_classes=2, pretrained=True):
     return model
 
 
+#通过调用这个函数，可以方便地获取指定名称的Swin Transformer模型，并根据需要修改输出层以适应不同的分类任务。
 def get_swin_transformers(model_name='swin_base_patch4_window12_384', pretrained=True, num_classes=2):
     """
     :param model_name: swin_base_patch4_window12_384   swin_large_patch4_window12_384
@@ -173,10 +174,16 @@ def get_swin_transformers(model_name='swin_base_patch4_window12_384', pretrained
     :param num_classes:
     :return:
     """
+    # 这行代码使用了 PyTorch Image Models (timm) 库中的 create_model 函数来创建指定名称的Swin Transformer模型，并根据 pretrained 参数决定是否加载预训练的权重。
     net = timm.create_model(model_name, pretrained=pretrained)
+
+    # 这行代码获取了模型的最后一个线性层（head）的输入特征数量。
     n_features = net.head.in_features
+
+    # 这行代码将模型的最后一个线性层替换为一个新的线性层，将输入特征数量调整为 n_features，输出特征数量调整为 num_classes，以适应不同任务的输出类别数量。
     net.head = nn.Linear(n_features, num_classes)
 
+    # 返回修改后的SwinTransformer模型。
     return net
 
 def get_convnext(model_name='convnext_xlarge_384_in22ft1k', pretrained=True, num_classes=2):
