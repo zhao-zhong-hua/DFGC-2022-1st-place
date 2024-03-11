@@ -14,6 +14,7 @@ import argparse
 import os
 
 
+
 def extract_video(input_dir, model, scale=1.3):
     reader = cv2.VideoCapture(input_dir)
     frames_num = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
