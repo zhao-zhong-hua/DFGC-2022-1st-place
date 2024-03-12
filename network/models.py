@@ -6,6 +6,8 @@ from efficientnet_pytorch import EfficientNet
 import timm
 from pytorch_pretrained_vit import ViT
 
+#手动加载模型配置文件所需的库
+from transformers import SwinForImageClassification
 
 # fc layer weight init
 def weights_init_kaiming(m):
@@ -167,7 +169,7 @@ def get_vit(model_name='B_16_imagenet1k', num_classes=2, pretrained=True):
 
 
 #通过调用这个函数，可以方便地获取指定名称的Swin Transformer模型，并根据需要修改输出层以适应不同的分类任务。
-def get_swin_transformers(model_name='swin_base_patch4_window12_384', pretrained=True, num_classes=2):
+def get_swin_transformers(model_name='swin_base_patch4_window12_384', pretrained=None, pretrained_path=None,config_path=None,num_classes=2):
     """
     :param model_name: swin_base_patch4_window12_384   swin_large_patch4_window12_384
     :param pretrained:
@@ -175,7 +177,20 @@ def get_swin_transformers(model_name='swin_base_patch4_window12_384', pretrained
     :return:
     """
     # 这行代码使用了 PyTorch Image Models (timm) 库中的 create_model 函数来创建指定名称的Swin Transformer模型，并根据 pretrained 参数决定是否加载预训练的权重。
+    #预训练权重无法连接下载，手动下载
+
     net = timm.create_model(model_name, pretrained=pretrained)
+    # config = SwinTransformerConfig.from_json_file(config_path)
+
+    # 手动创建 Swin Transformer 模型
+    # net = SwinForImageClassification.from_pretrained(config_path)
+
+    # if pretrained == False:
+    #     print('pretrained为False，接下来可以手动加载预训练模型')
+    #     if pretrained_path is not None:
+    #         state_dict = torch.load(pretrained_path)
+    #         net.load_state_dict(state_dict)
+    #         print('手动加载完成预训练模型')
 
     # 这行代码获取了模型的最后一个线性层（head）的输入特征数量。
     n_features = net.head.in_features

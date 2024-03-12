@@ -7,6 +7,7 @@ import torch
 import torch.optim as optim
 from torch.autograd import Variable
 import argparse
+import os
 
 import json
 import random
@@ -21,6 +22,9 @@ from transforms import build_transforms
 from metrics import get_metrics
 #单个视频文件夹中随机读取1个图片
 from dataset import binary_Rebalanced_Dataloader
+
+#镜像huggingface网站
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 #单个视频文件夹中随机读取多个图片，具体数量需要设置dataset_zzh中的参数
 # from dataset_zzh import binary_Rebalanced_Dataloader
@@ -200,7 +204,11 @@ def main():
     print(timeStr, 'All Train videos Number: %d' % (len(train_dataset)))
 
     #创建神经网络模型：使用 get_swin_transformers 函数创建 Swin Transformer 模型，指定模型名称和类别数量，并将模型移到 GPU 上
+    #此处手动加载模型配置和参数
     model = get_swin_transformers(model_name=args.model_name, num_classes=args.num_class).cuda()
+
+    #输出模型结构检查
+    print(model)
 
     #定义优化器、学习率调度器和损失函数：使用 AdamW 优化器、ExponentialLR 学习率调度器和交叉熵损失函数。
     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.base_lr)
@@ -252,7 +260,15 @@ def main():
             # 梯度清零
             optimizer.zero_grad()
             # 前向传播，计算输出
+            print('images shape:',images.shape)
+
             outputs = model(images)
+
+            # 打印模型输出的维度
+            print("Model outputs shape:", outputs.shape)
+
+            # 打印标签的维度
+            print("Labels shape:", labels.shape)
             # Calculate loss
             # 计算损失
             loss = criterion(outputs, labels)

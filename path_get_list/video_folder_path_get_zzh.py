@@ -5,8 +5,8 @@ def process_folder(folder_path, output_file, label1, label2, label3):
         # for file in files: #对于文件，修改下面的folder为file
         for folder in dirs: #对于文件夹，修改下面的file为folder
             if folder.lower().endswith('.mp4'):
-                folder_path = os.path.abspath(os.path.join(root, folder)) #输出完整路径
-                # file_path = os.path.join(root, folder)  #输出相对路径
+                folder_path = os.path.abspath(os.path.join(root, folder).replace('\\', '/')) #输出完整路径
+                # file_path = os.path.join(root, folder).replace('\\', '/')  #输出相对路径
                 labels_str = f"{label1} {label2} {label3}"
                 output_line = f"{folder_path} {labels_str}\n"
                 output_file.write(output_line)
