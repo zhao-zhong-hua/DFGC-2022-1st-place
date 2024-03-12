@@ -29,6 +29,7 @@ class binary_Rebalanced_Dataloader(object):
         self.phase = phase
         self.num_classes = num_class
         self.transform = transform
+        #出错时的默认路径和图像
         self.default_video_name = '/data/linyz/Celeb-DF-v2/face_crop_png/Celeb-real/id53_0008.mp4'
         self.default_label = 0
 
