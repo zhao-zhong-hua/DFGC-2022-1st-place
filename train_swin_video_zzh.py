@@ -19,7 +19,11 @@ from logger import create_logger
 from network.models import get_swin_transformers
 from transforms import build_transforms
 from metrics import get_metrics
+#单个视频文件夹中随机读取1个图片
 from dataset import binary_Rebalanced_Dataloader
+
+#单个视频文件夹中随机读取多个图片，具体数量需要设置dataset_zzh中的参数
+# from dataset_zzh import binary_Rebalanced_Dataloader
 
 import os
 
@@ -40,8 +44,8 @@ def load_network(network, save_filename):
 def parse_args():
     parser = argparse.ArgumentParser(description='Training network')
 
-    #DFDC数据集的根路径
-    parser.add_argument('--root_path_dfdc', default='/data/linyz/DFDC/face_crop_png',
+    #数据集的根路径（没用）
+    parser.add_argument('--root_path_dfdc', default='/data/Celeb_frame',
                         type=str, help='path to DFDC dataset')
     #保存训练结果的路径。
     parser.add_argument('--save_path', type=str, default='./save_result')
@@ -50,7 +54,7 @@ def parse_args():
     parser.add_argument('--model_name', type=str, default='swin_large_patch4_window12_384_in22k')
 
     #用于训练的GPU的ID
-    parser.add_argument('--gpu_id', type=int, default=6)
+    parser.add_argument('--gpu_id', type=int, default=3)
 
     #分类任务中的类别数量。
     parser.add_argument('--num_class', type=int, default=2)
@@ -60,7 +64,8 @@ def parse_args():
                         default=['real', 'fake'])
 
     #训练的轮数。
-    parser.add_argument('--num_epochs', type=int, default=60)
+    # parser.add_argument('--num_epochs', type=int, default=60)
+    parser.add_argument('--num_epochs', type=int, default=20)
 
     #在多少次迭代后调整学习率。
     parser.add_argument('--adjust_lr_iteration', type=int, default=30000)
@@ -72,19 +77,21 @@ def parse_args():
     parser.add_argument('--base_lr', type=float, default=0.00005)
 
     #每个训练批次的样本数量。
-    parser.add_argument('--batch_size', type=int, default=24)
+    # parser.add_argument('--batch_size', type=int, default=24)
+    parser.add_argument('--batch_size', type=int, default=12)
 
     #输入图像的分辨率。
     parser.add_argument('--resolution', type=int, default=384)
 
     # 每个验证批次的样本数量。
-    parser.add_argument('--val_batch_size', type=int, default=128)
+    # parser.add_argument('--val_batch_size', type=int, default=128)
+    parser.add_argument('--val_batch_size', type=int, default=64)
     args = parser.parse_args()
     return args
 
 #从指定目录中的文本文件加载视频文件路径和相应的标签，
 # txt_path='./txt'：默认文本文件所在的目录路径，默认为当前目录下的 txt 目录，logger=None：一个用于记录日志的对象，默认为 None。
-def load_txt(txt_path='./txt', logger=None):
+def load_txt(txt_path='./txt_test', parent_folder='', logger=None):
     # 获取指定目录下的所有文本文件名
     txt_names = os.listdir(txt_path)
     # 创建两个空列表，用于存储加载的视频路径和标签。
@@ -101,12 +108,15 @@ def load_txt(txt_path='./txt', logger=None):
                 if i.find('landmarks') != -1:
                     continue
                 # 检查当前视频路径对应的目录是否为空，如果是则跳过当前行
-                if len(os.listdir(i.strip().split()[0])) == 0:
+                # if len(os.listdir(i.strip().split()[0])) == 0:
+                if len(os.listdir(os.path.join(parent_folder, i.strip().split()[0]))) == 0:
                     continue
                 # 将视频路径和标签添加到临时列表中
-                tmp_videos.append(i.strip().split()[0])
-                #真假标签的位置,三个标签的话应该把最后的1改为3
-                tmp_labels.append(int(i.strip().split()[1]))
+                # tmp_videos.append(i.strip().split()[0])
+                tmp_videos.append(os.path.join(parent_folder, i.strip().split()[0]))
+
+                #真假标签的位置,如果给定三个标签的话应该把最后的1改为3
+                tmp_labels.append(int(i.strip().split()[3]))
 
         timeStr = time.strftime('[%Y-%m-%d %H:%M:%S]',time.localtime(time.time()))
         # 打印当前加载的标签信息
@@ -133,45 +143,48 @@ def main():
     #存储训练数据集的视频文件路径和对应的标签
     train_videos, train_labels = [], []
 
-    #迭代构建访问训练数据集的子文件夹，idx 从0到49循环遍历
-    for idx in tqdm(range(0, 50)):
+    # #迭代构建访问训练数据集的子文件夹，idx 从0到49循环遍历
+    # for idx in tqdm(range(0, 50)):
+    #
+    #     #构建当前子文件夹的名称，格式为 dfdc_train_part_0, dfdc_train_part_1, ..., dfdc_train_part_49。
+    #     sub_name = 'dfdc_train_part_%d' % idx
+    #
+    #     #构建当前子文件夹的完整路径，args.root_path_dfdc 是存储数据集的根目录。
+    #     video_sub_path = os.path.join(args.root_path_dfdc, sub_name)
+    #
+    #     #: 打开当前子文件夹下的 metadata.json 文件，该文件包含了每个视频文件的元数据信息。
+    #     with open(os.path.join(video_sub_path, 'metadata.json')) as metadata_json:
+    #         #将 metadata.json 文件中的内容加载到 metadata 变量中，以便后续处理。
+    #         metadata = json.load(metadata_json)
+    #
+    #     #对 metadata 中的每一项进行迭代处理。
+    #     for key, value in metadata.items():
+    #         #检查当前视频文件的标签是否为“FAKE”。如果标签是“FAKE”，将标签设为1，否则设为0。
+    #         if value['label'] == 'FAKE': # FAKE or REAL
+    #             label = 1
+    #         else:
+    #             label = 0
+    #
+    #         #构建当前视频文件的完整路径。
+    #         inputPath = os.path.join(args.root_path_dfdc, sub_name, key)
+    #
+    #         #检查当前视频文件夹是否为空。如果为空，则跳过该视频文件。
+    #         if len(os.listdir(inputPath)) == 0:
+    #             continue
+    #         #将当前视频文件的路径和标签分别添加到 train_videos 和 train_labels 列表中。通过这段代码，训练数据集中每个视频文件夹的路径和对应的标签被收集和存储起来，以便后续在模型训练过程中使用。
+    #         train_videos.append(inputPath)
+    #         train_labels.append(label)
 
-        #构建当前子文件夹的名称，格式为 dfdc_train_part_0, dfdc_train_part_1, ..., dfdc_train_part_49。
-        sub_name = 'dfdc_train_part_%d' % idx
 
-        #构建当前子文件夹的完整路径，args.root_path_dfdc 是存储数据集的根目录。
-        video_sub_path = os.path.join(args.root_path_dfdc, sub_name)
-
-        #: 打开当前子文件夹下的 metadata.json 文件，该文件包含了每个视频文件的元数据信息。
-        with open(os.path.join(video_sub_path, 'metadata.json')) as metadata_json:
-            #将 metadata.json 文件中的内容加载到 metadata 变量中，以便后续处理。
-            metadata = json.load(metadata_json)
-
-        #对 metadata 中的每一项进行迭代处理。
-        for key, value in metadata.items():
-            #检查当前视频文件的标签是否为“FAKE”。如果标签是“FAKE”，将标签设为1，否则设为0。
-            if value['label'] == 'FAKE': # FAKE or REAL
-                label = 1
-            else:
-                label = 0
-
-            #构建当前视频文件的完整路径。
-            inputPath = os.path.join(args.root_path_dfdc, sub_name, key)
-
-            #检查当前视频文件夹是否为空。如果为空，则跳过该视频文件。
-            if len(os.listdir(inputPath)) == 0:
-                continue
-            #将当前视频文件的路径和标签分别添加到 train_videos 和 train_labels 列表中。通过这段代码，训练数据集中每个视频文件夹的路径和对应的标签被收集和存储起来，以便后续在模型训练过程中使用。
-            train_videos.append(inputPath)
-            train_labels.append(label)
-
-
-    timeStr = time.strftime('[%Y-%m-%d %H:%M:%S]',time.localtime(time.time()))
+    # timeStr = time.strftime('[%Y-%m-%d %H:%M:%S]',time.localtime(time.time()))
     # 这行代码打印了当前时间、训练数据集中的样本数、标签为1的样本数（即"FAKE"样本数）、以及标签为1的样本在整个数据集中的比例（即“FAKE”的比例）。
-    print(timeStr, len(train_labels), sum(train_labels), sum(train_labels)/len(train_labels))
+    # print(timeStr, len(train_labels), sum(train_labels), sum(train_labels)/len(train_labels))
+
+
     # 这行代码调用了 load_txt 函数来加载额外的训练数据。他从 .txt 文件夹中加载包含视频路径和标签的txt文件。
-    tmp_videos, tmp_labels = load_txt(txt_path='./txt')
+    tmp_videos, tmp_labels = load_txt(txt_path='./txt_test',parent_folder='data')
     # 这两行代码将新加载的训练数据（视频路径和对应标签）添加到原始训练数据集的末尾。
+
     train_videos += tmp_videos
     train_labels += tmp_labels
     timeStr = time.strftime('[%Y-%m-%d %H:%M:%S]',time.localtime(time.time()))
